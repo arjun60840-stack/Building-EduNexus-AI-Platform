@@ -15,8 +15,10 @@ interface StatCardProps {
   value: string;
   change: number | string;
   trend: 'up' | 'down';
-  gradientFrom: string;
-  gradientTo: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+  color?: string;
+  delay?: number;
   sparklineData?: { value: number }[];
   index?: number;
 }
@@ -76,7 +78,7 @@ export function StatCard({
               ) : (
                 <TrendingDown className="w-3 h-3" />
               )}
-              {Math.abs(change)}%
+              {typeof change === 'number' ? `${Math.abs(change)}%` : change}
             </span>
             <span className="text-xs text-text-muted">vs last month</span>
           </div>
