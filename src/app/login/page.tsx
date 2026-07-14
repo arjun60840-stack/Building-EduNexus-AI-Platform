@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/utils/supabase/client';
 import {
   Mail,
   Lock,
@@ -49,12 +50,38 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<Role>('admin');
   const [isLoading, setIsLoading] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    router.push(`/dashboard/${selectedRole}`);
+    setAuthError(null);
+    
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // Fetch user role from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      const role = profile?.role || 'student';
+      router.push(`/dashboard/${role}`);
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to login');
+      setIsLoading(false);
+    }
   };
 
   const fadeUp = {
@@ -238,6 +265,15 @@ export default function LoginPage() {
               Sign in to your account to continue
             </p>
           </motion.div>
+          {authError && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="mb-6 rounded-xl bg-red-500/10 p-4 border border-red-500/20 text-red-600 dark:text-red-400 text-sm"
+            >
+              {authError}
+            </motion.div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">

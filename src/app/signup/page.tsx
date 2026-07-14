@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/utils/supabase/client';
 import {
   Mail,
   Lock,
@@ -56,14 +57,49 @@ export default function SignupPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSuccess, setAuthSuccess] = useState<string | null>(null);
+
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) return;
-    if (!agreedToTerms) return;
+    if (password !== confirmPassword) {
+      setAuthError("Passwords do not match");
+      return;
+    }
+    if (!agreedToTerms) {
+      setAuthError("You must agree to the terms");
+      return;
+    }
+    
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    router.push('/login');
+    setAuthError(null);
+    setAuthSuccess(null);
+    
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            role: selectedRole,
+            phone_number: phone,
+          }
+        }
+      });
+
+      if (error) throw error;
+      
+      setAuthSuccess("Account created successfully! Redirecting to login...");
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+    } catch (err: any) {
+      setAuthError(err.message || "Failed to sign up");
+      setIsLoading(false);
+    }
   };
 
   const fadeUp = {
@@ -270,6 +306,24 @@ export default function SignupPage() {
               Fill in your details to get started with EduNexus AI
             </p>
           </motion.div>
+          {authError && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="mb-6 rounded-xl bg-red-500/10 p-4 border border-red-500/20 text-red-600 dark:text-red-400 text-sm"
+            >
+              {authError}
+            </motion.div>
+          )}
+          {authSuccess && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              className="mb-6 rounded-xl bg-green-500/10 p-4 border border-green-500/20 text-green-600 dark:text-green-400 text-sm"
+            >
+              {authSuccess}
+            </motion.div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">

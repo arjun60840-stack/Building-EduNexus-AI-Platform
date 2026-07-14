@@ -29,7 +29,14 @@ export async function updateSession(request: NextRequest) {
     )
 
     // refreshing the auth token
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Protected routes
+    if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
 
     return supabaseResponse
   } catch (e) {
